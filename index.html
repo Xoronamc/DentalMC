@@ -892,11 +892,9 @@
 
     <script>
         /* ======================================================
-           ⚠️ CONFIGURACIÓN - IMPORTANTE ⚠️
-           Pega aquí la URL de tu Google Apps Script
+           CONFIGURACIÓN - URL de Google Apps Script
         ====================================================== */
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec';
-        // Ejemplo: 'https://script.google.com/macros/s/AKfycbxxx...xxx/exec'
 
         /* ======================================================
            THEME
@@ -929,6 +927,20 @@
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
             document.getElementById('inputFecha').setAttribute('min', `${yyyy}-${mm}-${dd}`);
+
+            // Live validation on input
+            document.getElementById('inputNombre').addEventListener('input', () => {
+                if (document.getElementById('inputNombre').value.trim()) ocultarError('errNombre');
+            });
+            document.getElementById('inputTel').addEventListener('input', () => {
+                if (document.getElementById('inputTel').value.replace(/\D/g,'').length >= 8) ocultarError('errTel');
+            });
+            document.getElementById('inputServicio').addEventListener('change', () => {
+                if (document.getElementById('inputServicio').value) ocultarError('errServicio');
+            });
+            document.getElementById('inputFecha').addEventListener('change', () => {
+                if (document.getElementById('inputFecha').value) ocultarError('errFecha');
+            });
         });
 
         /* ======================================================
@@ -1063,12 +1075,6 @@
         async function confirmarCita() {
             if (!validarForm()) return;
 
-            // Check if URL is configured
-            if (GOOGLE_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec') {
-                alert('⚠️ Error de configuración: Por favor configura la URL de Google Script en el código.');
-                return;
-            }
-
             const nombre = document.getElementById('inputNombre').value.trim();
             const telefono = document.getElementById('inputTel').value.trim();
             const servicio = document.getElementById('inputServicio').value;
@@ -1165,22 +1171,6 @@
         function escapeHtml(str) {
             return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
-
-        // Live validation on input
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('inputNombre').addEventListener('input', () => {
-                if (document.getElementById('inputNombre').value.trim()) ocultarError('errNombre');
-            });
-            document.getElementById('inputTel').addEventListener('input', () => {
-                if (document.getElementById('inputTel').value.replace(/\D/g,'').length >= 8) ocultarError('errTel');
-            });
-            document.getElementById('inputServicio').addEventListener('change', () => {
-                if (document.getElementById('inputServicio').value) ocultarError('errServicio');
-            });
-            document.getElementById('inputFecha').addEventListener('change', () => {
-                if (document.getElementById('inputFecha').value) ocultarError('errFecha');
-            });
-        });
 
         // Close modal with Escape
         document.addEventListener('keydown', (e) => {
