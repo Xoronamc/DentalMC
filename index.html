@@ -895,7 +895,7 @@
            ⚠️ CONFIGURACIÓN - IMPORTANTE ⚠️
            Pega aquí la URL de tu Google Apps Script
         ====================================================== */
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwECWa6Ncv_NY_h-qOSfgYDSSvqxj6F-DtgJgL8S2eEui6jUDEonxP22FW9lili4c6k8w/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec';
         // Ejemplo: 'https://script.google.com/macros/s/AKfycbxxx...xxx/exec'
 
         /* ======================================================
@@ -994,7 +994,7 @@
 
             // Fetch occupied slots from Google Sheets
             try {
-                const response = await fetch(`${https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec}?fecha=${fecha}`);
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?fecha=${fecha}`);
                 const data = await response.json();
 
                 if (!data.success) {
@@ -1064,7 +1064,7 @@
             if (!validarForm()) return;
 
             // Check if URL is configured
-            if (GOOGLE_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwECWa6Ncv_NY_h-qOSfgYDSSvqxj6F-DtgJgL8S2eEui6jUDEonxP22FW9lili4c6k8w/exec') {
+            if (GOOGLE_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec') {
                 alert('⚠️ Error de configuración: Por favor configura la URL de Google Script en el código.');
                 return;
             }
