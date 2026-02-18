@@ -442,7 +442,7 @@
             font-weight: 600;
         }
 
-        .time-slot:hover:not(.ocupado) {
+        .time-slot:hover:not(.ocupado):not(.cargando) {
             border-color: var(--primary-color);
             background: rgba(182, 149, 192, 0.15);
         }
@@ -459,6 +459,13 @@
             color: #aaa;
             cursor: not-allowed;
             text-decoration: line-through;
+        }
+
+        .time-slot.cargando {
+            background: rgba(182, 149, 192, 0.1);
+            border-color: #d9c6e0;
+            color: #999;
+            cursor: wait;
         }
 
         .slots-note {
@@ -509,7 +516,7 @@
             box-shadow: 0 4px 15px rgba(182,149,192,0.4);
         }
 
-        .btn-confirmar:hover {
+        .btn-confirmar:hover:not(:disabled) {
             background: #a47fb5;
             transform: translateY(-1px);
         }
@@ -595,19 +602,6 @@
             color: #fff;
         }
 
-        /* Nav appointment link styled differently */
-        .nav-cita-link {
-            background: var(--primary-color);
-            border-radius: 20px;
-            padding: 0.3rem 1rem !important;
-            transition: all 0.3s !important;
-        }
-
-        .nav-cita-link:hover {
-            background: #a47fb5 !important;
-            color: #fff !important;
-        }
-
         /* Citas section */
         #Citas .agendar-btn-wrapper {
             margin: 0;
@@ -642,6 +636,22 @@
             font-weight: 700;
             color: var(--primary-color);
             margin-top: 0.5rem;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.6s linear infinite;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         @media (max-width: 480px) {
@@ -882,6 +892,13 @@
 
     <script>
         /* ======================================================
+           ⚠️ CONFIGURACIÓN - IMPORTANTE ⚠️
+           Pega aquí la URL de tu Google Apps Script
+        ====================================================== */
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvEzh9iFdrCp3y5HAFw2p85GiBnnyvhkVlKzHoE9nORokRptLCYEveogJ2_7509dZD/exec';
+        // Ejemplo: 'https://script.google.com/macros/s/AKfycbxxx...xxx/exec'
+
+        /* ======================================================
            THEME
         ====================================================== */
         function toggleTheme() {
@@ -915,19 +932,8 @@
         });
 
         /* ======================================================
-           APPOINTMENT DATA
-           Stored in localStorage as:
-           { [dateKey]: { "11:00": { nombre, tel, servicio, nota } } }
+           APPOINTMENT SLOTS
         ====================================================== */
-        const STORAGE_KEY = 'citas_dental_melina';
-        const HORARIOS = ['11:00', '14:00', '17:00']; // 11-14, 14-17, 17-20 (last ends at 20, within 18 limit last starts at 17)
-        // Slots: 11:00–14:00, 14:00–17:00. The last possible start so the 3hr block ends by 20:00
-        // But requirement is 11:00–18:00, so last start = 18:00 - 3hrs = 15:00.
-        // Possible starts: 11, 14 → only 2 slots.
-        // Actually we can fit: 11:00–14:00, 14:00–17:00, 15:00–18:00 (overlaps).
-        // Non-overlapping slots within 11:00–18:00 with 3hr blocks:
-        // Slot 1: 11:00–14:00, Slot 2: 14:00–17:00  → only 2 fit perfectly
-        // But we can offer 3 slots if we allow: 11:00, 13:00, 15:00 (each 3hrs ending at 14, 16, 18)
         const SLOTS = [
             { inicio: '11:00', fin: '14:00' },
             { inicio: '13:00', fin: '16:00' },
@@ -935,17 +941,6 @@
         ];
 
         let selectedSlot = null;
-
-        function getCitas() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : {};
-        }
-
-        function saveCitas(data) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-
-        function fechaKey(dateStr) { return dateStr; } // "YYYY-MM-DD"
 
         /* ======================================================
            MODAL
@@ -965,9 +960,9 @@
         }
 
         /* ======================================================
-           LOAD TIME SLOTS
+           LOAD TIME SLOTS FROM GOOGLE SHEETS
         ====================================================== */
-        function cargarHorarios() {
+        async function cargarHorarios() {
             const fecha = document.getElementById('inputFecha').value;
             if (!fecha) return;
 
@@ -981,26 +976,55 @@
                 return;
             }
 
-            const citas = getCitas();
-            const diaData = citas[fechaKey(fecha)] || {};
             const container = document.getElementById('timeSlots');
             container.innerHTML = '';
             selectedSlot = null;
 
+            // Show loading state
             SLOTS.forEach(slot => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                const ocupado = !!diaData[slot.inicio];
-                btn.className = 'time-slot' + (ocupado ? ' ocupado' : '');
-                btn.innerHTML = `${slot.inicio}<br><span style="font-size:0.7rem;opacity:0.75">a las ${slot.fin}</span>`;
-                btn.dataset.slot = slot.inicio;
-                if (!ocupado) {
-                    btn.onclick = () => seleccionarSlot(slot.inicio, btn);
-                }
+                btn.className = 'time-slot cargando';
+                btn.innerHTML = `${slot.inicio}<br><span style="font-size:0.7rem;opacity:0.75">cargando...</span>`;
+                btn.disabled = true;
                 container.appendChild(btn);
             });
 
             document.getElementById('grupoHorarios').style.display = 'block';
+
+            // Fetch occupied slots from Google Sheets
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?fecha=${fecha}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Error al cargar horarios');
+                }
+
+                const horariosOcupados = data.horariosOcupados || [];
+
+                // Rebuild slots with real data
+                container.innerHTML = '';
+                SLOTS.forEach(slot => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const ocupado = horariosOcupados.includes(slot.inicio);
+                    btn.className = 'time-slot' + (ocupado ? ' ocupado' : '');
+                    btn.innerHTML = `${slot.inicio}<br><span style="font-size:0.7rem;opacity:0.75">a las ${slot.fin}</span>`;
+                    btn.dataset.slot = slot.inicio;
+                    if (!ocupado) {
+                        btn.onclick = () => seleccionarSlot(slot.inicio, btn);
+                    } else {
+                        btn.disabled = true;
+                    }
+                    container.appendChild(btn);
+                });
+
+            } catch (error) {
+                console.error('Error cargando horarios:', error);
+                alert('Error al cargar los horarios disponibles. Por favor intenta de nuevo.');
+                document.getElementById('grupoHorarios').style.display = 'none';
+            }
         }
 
         function seleccionarSlot(slotInicio, btn) {
@@ -1034,47 +1058,74 @@
         }
 
         /* ======================================================
-           CONFIRM APPOINTMENT
+           CONFIRM APPOINTMENT - SEND TO GOOGLE SHEETS
         ====================================================== */
-        function confirmarCita() {
+        async function confirmarCita() {
             if (!validarForm()) return;
 
+            // Check if URL is configured
+            if (GOOGLE_SCRIPT_URL === 'PEGA_AQUI_TU_URL_DE_GOOGLE_SCRIPT') {
+                alert('⚠️ Error de configuración: Por favor configura la URL de Google Script en el código.');
+                return;
+            }
+
             const nombre = document.getElementById('inputNombre').value.trim();
-            const tel = document.getElementById('inputTel').value.trim();
+            const telefono = document.getElementById('inputTel').value.trim();
             const servicio = document.getElementById('inputServicio').value;
             const fecha = document.getElementById('inputFecha').value;
-            const nota = document.getElementById('inputNota').value.trim();
+            const notas = document.getElementById('inputNota').value.trim();
 
             // Find the slot object
             const slotObj = SLOTS.find(s => s.inicio === selectedSlot);
 
-            // Save
-            const citas = getCitas();
-            if (!citas[fecha]) citas[fecha] = {};
+            // Disable button and show loading
+            const btnConfirmar = document.getElementById('btnConfirmar');
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
-            // Double-check slot is still available
-            if (citas[fecha][selectedSlot]) {
-                alert('Lo sentimos, ese horario acaba de ser reservado. Por favor elige otro.');
-                cargarHorarios();
-                return;
+            try {
+                // Send to Google Sheets
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nombre: nombre,
+                        telefono: telefono,
+                        servicio: servicio,
+                        fecha: fecha,
+                        horario: selectedSlot,
+                        notas: notas
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Error al guardar la cita');
+                }
+
+                // Show success
+                const fechaLegible = formatearFecha(fecha);
+                document.getElementById('resumenCita').innerHTML = `
+                    <p>👤 <strong>Paciente:</strong> ${escapeHtml(nombre)}</p>
+                    <p>📞 <strong>Teléfono:</strong> ${escapeHtml(telefono)}</p>
+                    <p>🦷 <strong>Servicio:</strong> ${escapeHtml(servicio)}</p>
+                    <p>📅 <strong>Fecha:</strong> ${fechaLegible}</p>
+                    <p>🕐 <strong>Horario:</strong> ${slotObj.inicio} – ${slotObj.fin} hrs</p>
+                    ${notas ? `<p>📝 <strong>Notas:</strong> ${escapeHtml(notas)}</p>` : ''}
+                `;
+
+                document.getElementById('vistaForm').style.display = 'none';
+                document.getElementById('vistaExito').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error guardando cita:', error);
+                alert('Hubo un error al guardar tu cita. Por favor intenta de nuevo o contáctanos por WhatsApp.');
+                btnConfirmar.disabled = false;
+                btnConfirmar.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar cita';
             }
-
-            citas[fecha][selectedSlot] = { nombre, tel, servicio, nota, fin: slotObj.fin };
-            saveCitas(citas);
-
-            // Show success
-            const fechaLegible = formatearFecha(fecha);
-            document.getElementById('resumenCita').innerHTML = `
-                <p>👤 <strong>Paciente:</strong> ${escapeHtml(nombre)}</p>
-                <p>📞 <strong>Teléfono:</strong> ${escapeHtml(tel)}</p>
-                <p>🦷 <strong>Servicio:</strong> ${escapeHtml(servicio)}</p>
-                <p>📅 <strong>Fecha:</strong> ${fechaLegible}</p>
-                <p>🕐 <strong>Horario:</strong> ${slotObj.inicio} – ${slotObj.fin} hrs</p>
-                ${nota ? `<p>📝 <strong>Notas:</strong> ${escapeHtml(nota)}</p>` : ''}
-            `;
-
-            document.getElementById('vistaForm').style.display = 'none';
-            document.getElementById('vistaExito').style.display = 'block';
         }
 
         /* ======================================================
@@ -1092,6 +1143,11 @@
 
             // Hide all errors
             document.querySelectorAll('.form-error').forEach(e => e.classList.remove('visible'));
+
+            // Reset button
+            const btnConfirmar = document.getElementById('btnConfirmar');
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar cita';
 
             document.getElementById('vistaExito').style.display = 'none';
             document.getElementById('vistaForm').style.display = 'block';
