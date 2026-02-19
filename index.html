@@ -895,7 +895,7 @@
            ⚠️ CONFIGURACIÓN - IMPORTANTE ⚠️
            Pega aquí la URL de tu Google Apps Script
         ====================================================== */
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz9HYFdN1EiweNTBuA4Yd3EKODgPFpaYSqtQE2l2oimXlt9-Mws1x81E4HOenAPPbup/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBhThMdwjELxtK15pJGyKLyhZEd_yfFFjCvJkfvFE2ACa727EDOmSmccWATpg8-svY/exec';
         // Ejemplo: 'https://script.google.com/macros/s/AKfycbxxx...xxx/exec'
 
         /* ======================================================
@@ -997,7 +997,10 @@
 
             // Fetch occupied slots from Google Sheets
             try {
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?fecha=${fecha}`);
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?fecha=${fecha}`, {
+    method: 'GET',
+    redirect: 'follow',  // ← Google Script hace redirecciones, esto es clave
+});
                 const data = await response.json();
 
                 if (!data.success) {
