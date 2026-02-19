@@ -962,13 +962,16 @@
         /* ======================================================
            LOAD TIME SLOTS FROM GOOGLE SHEETS
         ====================================================== */
-        async function cargarHorarios() {
+        async function cargarHorarios() 
+        {
             const fecha = document.getElementById('inputFecha').value;
             if (!fecha) return;
 
-            // Validate not in the past
+    // ✅ Validación corregida con hora local
             const today = new Date(); today.setHours(0,0,0,0);
-            const chosen = new Date(fecha + 'T00:00:00');
+            const [y, m, d] = fecha.split('-');
+            const chosen = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+
             if (chosen < today) {
                 document.getElementById('inputFecha').value = '';
                 alert('Por favor selecciona una fecha válida (hoy o en el futuro).');
